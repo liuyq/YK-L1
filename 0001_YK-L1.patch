@@ -1,0 +1,306 @@
+From cfb3de7f540954c8799692990849b678db5aebc1 Mon Sep 17 00:00:00 2001
+From: vadim196333 <35785343+vadim196333@users.noreply.github.com>
+Date: Wed, 31 Jan 2018 02:06:14 +0300
+Subject: [PATCH] Add files via upload
+
+---
+ target/linux/ramips/base-files/etc/board.d/01_leds |   6 +
+ .../linux/ramips/base-files/etc/board.d/02_network |   6 +
+ target/linux/ramips/base-files/etc/diag.sh         |   3 +
+ target/linux/ramips/base-files/lib/ramips.sh       |   3 +
+ .../ramips/base-files/lib/upgrade/platform.sh      |   1 +
+ target/linux/ramips/dts/YK-L1.dts                  | 137 +++++++++++++++++++++
+ target/linux/ramips/image/Makefile                 |   6 +-
+ target/linux/ramips/mt7620/profiles/YK-L1.mk       |  19 +++
+ 8 files changed, 179 insertions(+), 2 deletions(-)
+ create mode 100644 target/linux/ramips/dts/YK-L1.dts
+ create mode 100644 target/linux/ramips/mt7620/profiles/YK-L1.mk
+
+diff --git a/target/linux/ramips/base-files/etc/board.d/01_leds b/target/linux/ramips/base-files/etc/board.d/01_leds
+index 5946f98..67f7669 100755
+--- a/target/linux/ramips/base-files/etc/board.d/01_leds
++++ b/target/linux/ramips/base-files/etc/board.d/01_leds
+@@ -252,6 +252,12 @@ case $board in
+ 	xiaomi-miwifi-mini)
+ 		ucidef_set_led_default "power" "power" "xiaomi:red:status" "1"
+ 		;;
++        YK-L1)
++                ucidef_set_led_default "power" "power" "youku:blue:power" "1"
++                ucidef_set_led_netdev "wan" "wan" "youku:blue:wan" "eth0.2"
++                set_usb_led "youku:blue:usb"
++                set_wifi_led "youku:blue:wifi"
++                ;;
+ 	y1 |\
+ 	y1s)
+ 		ucidef_set_led_default "power" "power" "lenovo:blue:power" "1"
+diff --git a/target/linux/ramips/base-files/etc/board.d/02_network b/target/linux/ramips/base-files/etc/board.d/02_network
+index d7d016b..925cd58 100755
+--- a/target/linux/ramips/base-files/etc/board.d/02_network
++++ b/target/linux/ramips/base-files/etc/board.d/02_network
+@@ -145,6 +145,7 @@ ramips_setup_interfaces()
+ 	wsr-1166 | \
+ 	wt1520 | \
+ 	xiaomi-miwifi-mini |\
++        YK-L1 |\
+ 	y1|\
+ 	zbt-wg2626)
+ 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
+@@ -353,6 +354,11 @@ ramips_setup_macs()
+ 		wan_mac=$(mtd_get_mac_binary factory 40)
+ 		;;
+ 
++        YK-L1)
++                lan_mac=$(mtd_get_mac_binary factory 4)
++                wan_mac=$(macaddr_add "$lan_mac" 1)
++                ;;
++
+ 	rt-n56u)
+ 		lan_mac=$(cat /sys/class/net/eth0/address)
+ 		lan_mac=$(macaddr_setbit_la "$lan_mac")
+diff --git a/target/linux/ramips/base-files/etc/diag.sh b/target/linux/ramips/base-files/etc/diag.sh
+index a7e2501..0586908 100644
+--- a/target/linux/ramips/base-files/etc/diag.sh
++++ b/target/linux/ramips/base-files/etc/diag.sh
+@@ -243,6 +243,9 @@ get_status_led() {
+ 	na930)
+ 		status_led="na930:blue:power"
+ 		;;
++        YK-L1)
++                status_led="youku:blue:power"
++                ;;
+ 	y1 | \
+ 	y1s)
+ 		status_led="lenovo:blue:power"
+diff --git a/target/linux/ramips/base-files/lib/ramips.sh b/target/linux/ramips/base-files/lib/ramips.sh
+index 4141ddd..5f49102 100755
+--- a/target/linux/ramips/base-files/lib/ramips.sh
++++ b/target/linux/ramips/base-files/lib/ramips.sh
+@@ -412,6 +412,9 @@ ramips_board_detect() {
+ 	*"ZTE Q7")
+ 		name="zte-q7"
+ 		;;
++        *"YouKu YK-L1")
++                name="YK-L1"
++                ;;
+ 	*"Lenovo Y1")
+ 		name="y1"
+ 		;;
+diff --git a/target/linux/ramips/base-files/lib/upgrade/platform.sh b/target/linux/ramips/base-files/lib/upgrade/platform.sh
+index 2f64d8c..59cae50 100755
+--- a/target/linux/ramips/base-files/lib/upgrade/platform.sh
++++ b/target/linux/ramips/base-files/lib/upgrade/platform.sh
+@@ -124,6 +124,7 @@ platform_check_image() {
+ 	x5 |\
+ 	x8 |\
+ 	xiaomi-miwifi-mini |\
++        YK-L1 |\
+ 	y1 |\
+ 	y1s |\
+ 	zbt-wa05 |\
+diff --git a/target/linux/ramips/dts/YK-L1.dts b/target/linux/ramips/dts/YK-L1.dts
+new file mode 100644
+index 0000000..8abee6b
+--- /dev/null
++++ b/target/linux/ramips/dts/YK-L1.dts
+@@ -0,0 +1,137 @@
++/dts-v1/;
++
++/include/ "mt7620a.dtsi"
++
++/ {
++        compatible = "youku,yk-l1", "ralink,mt7620a-soc";
++        model = "YouKu Black 32M";
++
++        chosen {
++                bootargs = "console=ttyS0,115200";
++        };
++
++        palmbus@10000000 {
++                gpio0: gpio@600 {
++                        status = "okay";
++                };
++
++                gpio1: gpio@638 {
++                        status = "okay";
++                };
++
++                gpio2: gpio@660 {
++                        status = "okay";
++                };
++
++                gpio3: gpio@688 {
++                        status = "okay";
++                };
++
++                spi@b00 {
++                        status = "okay";
++
++                        m25p80@0 {
++                                #address-cells = <1>;
++                                #size-cells = <1>;
++                                compatible = "w25q128";
++                                reg = <0 0>;
++                                linux,modalias = "m25p80", "w25q256";
++                                spi-max-frequency = <10000000>;
++
++                                partition@0 {
++                                        label = "u-boot";
++                                        reg = <0x0 0x30000>;
++                                };
++
++                                partition@30000 {
++                                        label = "u-boot-env";
++                                        reg = <0x30000 0x10000>;
++                                        read-only;
++                                };
++
++                                factory: partition@40000 {
++                                        label = "factory";
++                                        reg = <0x40000 0x10000>;
++                                        read-only;
++                                };
++
++                                partition@50000 {
++                                        label = "firmware";
++                                        reg = <0x50000 0x1fb0000>;
++                                };
++                        };
++                };
++        };
++
++        ehci@101c0000 {
++                status = "okay";
++        };
++
++        ohci@101c1000 {
++                status = "okay";
++        };
++
++        sdhci@10130000 {
++                status = "okay";
++        };
++
++        ethernet@10100000 {
++                pinctrl-names = "default";
++                pinctrl-0 = <&ephy_pins>;
++                mtd-mac-address = <&factory 0x4>;
++                ralink,port-map = "llllw";
++        };
++
++        wmac@10180000 {
++                ralink,mtd-eeprom = <&factory 0>;
++        };
++
++        pcie@10140000 {
++                status = "okay";
++        };
++
++        pinctrl {
++                state_default: pinctrl0 {
++                        gpio {
++                                ralink,group = "i2c", "rgmii1", "ephy", "wled";
++                                ralink,function = "gpio";
++                        };
++                };
++        };
++
++        gpio-leds {
++                compatible = "gpio-leds";
++
++                power {
++                        label = "youku:blue:power";
++                        gpios = <&gpio1 5 1>;
++                };
++
++                usb {
++                        label = "youku:blue:usb";
++                        gpios = <&gpio1 11 1>;
++                };
++
++                wan {
++                        label = "youku:blue:wan";
++                        gpios = <&gpio2 4 1>;
++                };
++
++                wifi {
++                        label = "youku:blue:wifi";
++                        gpios = <&gpio3 0 1>;
++                };
++        };
++
++        gpio-keys-polled {
++                compatible = "gpio-keys-polled";
++                #address-cells = <1>;
++                #size-cells = <0>;
++                poll-interval = <20>;
++                reset {
++                        label = "reset";
++                        gpios = <&gpio0 1 1>;
++                        linux,code = <0x198>;
++                };
++        };
++};
+diff --git a/target/linux/ramips/image/Makefile b/target/linux/ramips/image/Makefile
+index 0d762ba..e456f64 100644
+--- a/target/linux/ramips/image/Makefile
++++ b/target/linux/ramips/image/Makefile
+@@ -535,7 +535,7 @@ Image/Build/Profile/FONERA20N=$(call BuildFirmware/Edimax/$(1),$(1),fonera20n,FO
+ 
+ Image/Build/Profile/RT-N13U=$(call BuildFirmware/Default8M/$(1),$(1),rt-n13u,RT-N13U)
+ 
+-#Image/Build/Profile/HG255D=$(call BuildFirmware/Default16M/$(1),$(1),hg255d,HG255D)
++Image/Build/Profile/HG255D=$(call BuildFirmware/Default16M/$(1),$(1),hg255d,HG255D)
+ 
+ Image/Build/Profile/FREESTATION5=$(call BuildFirmware/Default8M/$(1),$(1),freestation5,FREESTATION5)
+ 
+@@ -730,7 +730,7 @@ define Image/Build/Profile/Default
+ 	$(call Image/Build/Profile/F5D8235V2,$(1))
+ 	$(call Image/Build/Profile/FONERA20N,$(1))
+ 	$(call Image/Build/Profile/FREESTATION5,$(1))
+-#	$(call Image/Build/Profile/HG255D,$(1))
++	$(call Image/Build/Profile/HG255D,$(1))
+ 	$(call Image/Build/Profile/HLKRM04,$(1))
+ 	$(call Image/Build/Profile/HT-TM02,$(1))
+ 	$(call Image/Build/Profile/HW550-3G,$(1))
+@@ -873,6 +873,7 @@ Image/Build/Profile/DIR-810L=$(call BuildFirmware/CustomFlash/$(1),$(1),dir-810l
+ na930_mtd_size=20971520
+ Image/Build/Profile/NA930=$(call BuildFirmware/CustomFlash/$(1),$(1),na930,NA930,$(na930_mtd_size))
+ Image/Build/Profile/MZK-750DHP=$(call BuildFirmware/Default8M/$(1),$(1),mzk-750dhp,MZK-750DHP)
++Image/Build/Profile/YK-L1=$(call BuildFirmware/Default32M/$(1),$(1),YK-L1,YK-L1)
+ Image/Build/Profile/Y1=$(call BuildFirmware/Default16M/$(1),$(1),Lenovo-y1,Y1)
+ Image/Build/Profile/Y1S=$(call BuildFirmware/Default16M/$(1),$(1),Lenovo-y1s,Y1S)
+ Image/Build/Profile/MLW221=$(call BuildFirmware/Default16M/$(1),$(1),mlw221,MLW221)
+@@ -906,6 +907,7 @@ define Image/Build/Profile/Default
+ 	$(call Image/Build/Profile/WHR1166D,$(1))
+ 	$(call Image/Build/Profile/MZK-750DHP,$(1))
+ 	$(call Image/Build/Profile/NA930,$(1))
++        $(call Image/Build/Profile/YK-L1,$(1))
+ 	$(call Image/Build/Profile/Y1,$(1))
+ 	$(call Image/Build/Profile/Y1S,$(1))
+ 	$(call Image/Build/Profile/MLW221,$(1))
+diff --git a/target/linux/ramips/mt7620/profiles/YK-L1.mk b/target/linux/ramips/mt7620/profiles/YK-L1.mk
+new file mode 100644
+index 0000000..3bb83d9
+--- /dev/null
++++ b/target/linux/ramips/mt7620/profiles/YK-L1.mk
+@@ -0,0 +1,19 @@
++#
++# Copyright (C) 2015 OpenWrt.org
++#
++# This is free software, licensed under the GNU General Public License v2.
++# See /LICENSE for more information.
++#
++
++define Profile/YK-L1
++ NAME:=YK-L1
++ PACKAGES:=\
++                kmod-usb-core kmod-usb-dwc2 kmod-usb2 \
++                kmod-mmc-spi kmod-sdhci kmod-sdhci-mt7620 \
++                   kmod-ledtrig-usbdev
++endef
++
++define Profile/YK-L1/Description
++ Support for YK-L1 routers
++endef
++$(eval $(call Profile,YK-L1))
+\ No newline at end of file
